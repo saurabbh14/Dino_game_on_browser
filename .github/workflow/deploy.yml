@@ -23,6 +23,9 @@ jobs:
       - name: Build with pygbag
         run: pygbag --build main.py
 
+      - name: Debug build output
+        run: ls -R ./build
+
       - name: Verify build output
         run: ls -la ./build/web
 
@@ -32,4 +35,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
           publish_branch: gh-pages
-          
+
