@@ -29,6 +29,9 @@ jobs:
       - name: Verify build output
         run: ls -la ./build/web
 
+      - name: Disable Jekyll
+        run: echo "" > ./build/web/.nojekyll
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
