@@ -137,7 +137,23 @@ class Game:
                     else:
                         self.dino.jump()
 
+    def wait_for_start(self):
+        waiting = True
+        while waiting:
+            self.screen.fill(WHITE)
+            msg = self.font.render("Press SPACE to start the game", True, BLACK)
+            self.screen.blit(msg, (WIDTH // 2 - 200, HEIGHT // 2))
+            pygame.display.flip()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        waiting = False
+
     def run(self):
+        self.wait_for_start()
         while self.running:
             self.clock.tick(self.FPS)
             self.handle_events()
