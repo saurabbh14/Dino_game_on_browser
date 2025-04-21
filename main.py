@@ -106,6 +106,8 @@ class Game:
                     self.FPS = min(self.FPS + 1, 120)
 
     def draw(self):
+        if not self.running:
+            return
         self.screen.fill(WHITE)
         self.dino.draw(self.screen)
 
