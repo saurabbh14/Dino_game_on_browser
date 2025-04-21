@@ -2,164 +2,128 @@ import pygame
 import random
 import sys
 
-# Constants
+# Initialize Pygame
+pygame.init()
+
+# Screen settings
 WIDTH, HEIGHT = 800, 300
-WHITE, BLACK, GREEN, RED = (255, 255, 255), (0, 0, 0), (34, 177, 76), (255, 0, 0)
+SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Chrome Dino Clone")
 
-class Dino:
-    def __init__(self):
-        self.width, self.height = 40, 60
-        self.x = 50
-        self.y = HEIGHT - self.height - 30
-        self.vel_y = 0
-        self.is_jumping = False
-        self.gravity = 1
-        self.jump_speed = -15
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (34, 177, 76)
 
-    def get_rect(self):
-        return pygame.Rect(self.x, self.y, self.width, self.height)
+# Game clock
+clock = pygame.time.Clock()
+FPS = 60
 
-    def update(self):
-        self.y += self.vel_y
-        self.vel_y += self.gravity
-        if self.y >= HEIGHT - self.height - 30:
-            self.y = HEIGHT - self.height - 30
-            self.is_jumping = False
+# Dino settings
+dino_width, dino_height = 40, 60
+dino_x, dino_y = 50, HEIGHT - dino_height - 30
+jump_speed = -15
+gravity = 1
 
-    def jump(self):
-        if not self.is_jumping:
-            self.vel_y = self.jump_speed
-            self.is_jumping = True
+# Obstacle settings
+obstacle_width = 20
+obstacle_height = 40
+obstacle_speed = 7
+obstacle_timer = 0
 
-    def draw(self, screen):
-        pygame.draw.rect(screen, BLACK, self.get_rect())
+# Score
+score = 0
+font = pygame.font.SysFont(None, 36)
 
+# Game variables
+dino_vel_y = 0
+is_jumping = False
+obstacles = []
 
-class Obstacle:
-    def __init__(self):
-        self.width = 20
-        self.height = 40
-        self.x = WIDTH
-        self.y = HEIGHT - self.height - 30
-        self.speed = 7
+# Game loop
+game_over = False
+running = True
+start_time = pygame.time.get_ticks()
+while running:
+    clock.tick(FPS)
+    SCREEN.fill(WHITE)
 
-    def update(self):
-        self.x -= self.speed
+    # Draw dino
+    dino_rect = pygame.Rect(dino_x, dino_y, dino_width, dino_height)
+    pygame.draw.rect(SCREEN, BLACK, dino_rect)
 
-    def draw(self, screen):
-        pygame.draw.rect(screen, GREEN, self.get_rect())
+    # Event handling
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
 
-    def get_rect(self):
-        return pygame.Rect(self.x, self.y, self.width, self.height)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and not is_jumping and not game_over:
+                is_jumping = True
+                dino_vel_y = jump_speed
 
-    def is_off_screen(self):
-        return self.x + self.width < 0
+            if event.key == pygame.K_SPACE and game_over:
+                # Reset game state
+                dino_y = HEIGHT - dino_height - 30
+                dino_vel_y = 0
+                is_jumping = False
+                obstacles.clear()
+                score = 0
+                obstacle_timer = 0
+                start_time = pygame.time.get_ticks()
+                game_over = False
+                FPS = 60
 
+    # Handle jumping
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_SPACE] and not is_jumping:
+        dino_vel_y = jump_speed
+        is_jumping = True
 
-class Game:
-    def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Dino Clone OOP")
-        self.clock = pygame.time.Clock()
-        self.font = pygame.font.SysFont(None, 36)
+    dino_y += dino_vel_y
+    dino_vel_y += gravity
 
-        self.dino = Dino()
-        self.obstacles = []
-        self.running = True
-        self.game_over = False
-        self.score = 0
-        self.FPS = 60
-        self.start_time = pygame.time.get_ticks()
-        self.obstacle_timer = 0
-        self.spawn_delay = random.randint(60, 180)
-        self.state = "start"  # Start screen at launch
-
-    def reset(self):
-        self.dino = Dino()
-        self.obstacles.clear()
-        self.score = 0
-        self.game_over = False
-        self.start_time = pygame.time.get_ticks()
-        self.obstacle_timer = 0
-        self.FPS = 60
-
-    def spawn_obstacle(self):
-        self.obstacles.append(Obstacle())
-        self.spawn_delay = random.randint(60, 180)
-        self.obstacle_timer = 0
-
-    def update(self):
-        if not self.game_over:
-            self.dino.update()
-            self.obstacle_timer += 1
-
-            if self.obstacle_timer > self.spawn_delay:
-                self.spawn_obstacle()
-
-            for obstacle in self.obstacles[:]:
-                obstacle.update()
-                if obstacle.get_rect().colliderect(self.dino.get_rect()):
-                    self.state = "game_over"
-                if obstacle.is_off_screen():
-                    self.obstacles.remove(obstacle)
-                    self.score += 1
-                    self.FPS = min(self.FPS + 1, 120)
-
-    def draw(self):
-        self.screen.fill(WHITE)
-
-        if self.state == "start":
-            msg = self.font.render("Press SPACE to start the game", True, BLACK)
-            self.screen.blit(msg, (WIDTH // 2 - 200, HEIGHT // 2))
-
-        elif self.state == "playing":
-            self.dino.draw(self.screen)
-            for obstacle in self.obstacles:
-                obstacle.draw(self.screen)
-
-            score_text = self.font.render(f"Score: {self.score}", True, BLACK)
-            self.screen.blit(score_text, (10, 10))
-
-            elapsed = (pygame.time.get_ticks() - self.start_time) // 1000
-            time_text = self.font.render(f"Time: {elapsed}s", True, BLACK)
-            self.screen.blit(time_text, (10, 40))
-
-        elif self.state == "game_over":
-            self.dino.draw(self.screen)
-            for obstacle in self.obstacles:
-                obstacle.draw(self.screen)
-
-            msg = self.font.render("Game Over! Press SPACE to restart", True, RED)
-            self.screen.blit(msg, (WIDTH // 2 - 200, HEIGHT // 2))
-
-        pygame.display.flip()
-
-    def handle_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    if self.state == "start":
-                        self.state = "playing"
-                    elif self.state == "game_over":
-                        self.reset()
-                        self.state = "playing"
-                    elif self.state == "playing":
-                        self.dino.jump()
-
-    def run(self):
-        while self.running:
-            self.clock.tick(self.FPS)
-            self.handle_events()
-            if self.state == "playing":
-                self.update()
-            self.draw()
-
-        pygame.quit()
+    if dino_y >= HEIGHT - dino_height - 30:
+        dino_y = HEIGHT - dino_height - 30
+        is_jumping = False
 
 
-if __name__ == "__main__":
-    game = Game()
-    game.run()
+
+    # Spawn obstacles
+    obstacle_timer += 1
+    if obstacle_timer > random.randint(60, 180):
+        obstacle_timer = 0
+        new_obstacle = pygame.Rect(WIDTH, HEIGHT - obstacle_height - 30, obstacle_width, obstacle_height)
+        obstacles.append(new_obstacle)
+    if  not game_over:
+        # Move and draw obstacles
+        for obstacle in obstacles[:]:
+            obstacle.x -= obstacle_speed
+            pygame.draw.rect(SCREEN, GREEN, obstacle)
+
+            # Collision check
+            if dino_rect.colliderect(obstacle):
+                game_over = True
+
+            # Remove off-screen obstacles
+            if obstacle.x + obstacle_width < 0:
+                obstacles.remove(obstacle)
+                score += 1
+                FPS += 2
+
+
+        # Draw score
+        score_text = font.render(f"Score: {score}", True, BLACK)
+        SCREEN.blit(score_text, (10, 10))
+
+        elapsed_time = (pygame.time.get_ticks() - start_time) // 1000  # in seconds
+        time_text = font.render(f"Time: {elapsed_time}s", True, BLACK)
+        SCREEN.blit(time_text, (10, 40))
+
+    if game_over:
+        over_text = font.render("Game Over! Press Space bar to restart", True, (255, 0, 0))
+        SCREEN.blit(over_text, (WIDTH // 2 - 160, HEIGHT // 2))
+
+    pygame.display.flip()
+
+pygame.quit()
