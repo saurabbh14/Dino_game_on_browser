@@ -103,7 +103,7 @@ class Game:
                 if obstacle.is_off_screen():
                     self.obstacles.remove(obstacle)
                     self.score += 1
-                    self.FPS += 20
+                    self.FPS = min(self.FPS + 1, 120)
 
     def draw(self):
         self.screen.fill(WHITE)
@@ -145,7 +145,6 @@ class Game:
             self.draw()
 
         pygame.quit()
-        sys.exit()
 
 
 if __name__ == "__main__":
