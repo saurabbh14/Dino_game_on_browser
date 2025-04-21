@@ -73,6 +73,7 @@ class Game:
         self.start_time = pygame.time.get_ticks()
         self.obstacle_timer = 0
         self.spawn_delay = random.randint(60, 180)
+        self.state = "start"  # Start screen at launch
 
     def reset(self):
         self.dino = Dino()
@@ -99,29 +100,36 @@ class Game:
             for obstacle in self.obstacles[:]:
                 obstacle.update()
                 if obstacle.get_rect().colliderect(self.dino.get_rect()):
-                    self.game_over = True
+                    self.state = "game_over"
                 if obstacle.is_off_screen():
                     self.obstacles.remove(obstacle)
                     self.score += 1
                     self.FPS = min(self.FPS + 1, 120)
 
     def draw(self):
-        if not self.running:
-            return
         self.screen.fill(WHITE)
-        self.dino.draw(self.screen)
 
-        for obstacle in self.obstacles:
-            obstacle.draw(self.screen)
+        if self.state == "start":
+            msg = self.font.render("Press SPACE to start the game", True, BLACK)
+            self.screen.blit(msg, (WIDTH // 2 - 200, HEIGHT // 2))
 
-        score_text = self.font.render(f"Score: {self.score}", True, BLACK)
-        self.screen.blit(score_text, (10, 10))
+        elif self.state == "playing":
+            self.dino.draw(self.screen)
+            for obstacle in self.obstacles:
+                obstacle.draw(self.screen)
 
-        elapsed = (pygame.time.get_ticks() - self.start_time) // 1000
-        time_text = self.font.render(f"Time: {elapsed}s", True, BLACK)
-        self.screen.blit(time_text, (10, 40))
+            score_text = self.font.render(f"Score: {self.score}", True, BLACK)
+            self.screen.blit(score_text, (10, 10))
 
-        if self.game_over:
+            elapsed = (pygame.time.get_ticks() - self.start_time) // 1000
+            time_text = self.font.render(f"Time: {elapsed}s", True, BLACK)
+            self.screen.blit(time_text, (10, 40))
+
+        elif self.state == "game_over":
+            self.dino.draw(self.screen)
+            for obstacle in self.obstacles:
+                obstacle.draw(self.screen)
+
             msg = self.font.render("Game Over! Press SPACE to restart", True, RED)
             self.screen.blit(msg, (WIDTH // 2 - 200, HEIGHT // 2))
 
@@ -131,35 +139,22 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    if self.game_over:
+                    if self.state == "start":
+                        self.state = "playing"
+                    elif self.state == "game_over":
                         self.reset()
-                    else:
+                        self.state = "playing"
+                    elif self.state == "playing":
                         self.dino.jump()
 
-    def wait_for_start(self):
-        waiting = True
-        while waiting:
-            self.screen.fill(WHITE)
-            msg = self.font.render("Press SPACE to start the game", True, BLACK)
-            self.screen.blit(msg, (WIDTH // 2 - 200, HEIGHT // 2))
-            pygame.display.flip()
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE:
-                        waiting = False
-
     def run(self):
-        self.wait_for_start()
         while self.running:
             self.clock.tick(self.FPS)
             self.handle_events()
-            self.update()
+            if self.state == "playing":
+                self.update()
             self.draw()
 
         pygame.quit()
