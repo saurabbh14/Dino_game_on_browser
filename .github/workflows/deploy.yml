@@ -20,6 +20,12 @@ jobs:
       - name: Install pygbag
         run: pip install pygbag
 
+      - name: Verify main.py exists
+        run: |
+          if [ ! -f main.py ]; then
+            echo "Error: main.py not found!" && exit 1;
+          fi
+
       - name: Build with pygbag
         run: pygbag --build main.py
 
