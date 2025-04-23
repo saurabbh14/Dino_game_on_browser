@@ -1,129 +1,148 @@
 import pygame
 import random
+import asyncio
 import sys
 
-# Initialize Pygame
-pygame.init()
+class Dino:
+    def __init__(self, x, y, width, height):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.vel_y = 0
+        self.is_jumping = False
+        self.jump_speed = -15
 
-# Screen settings
+    def jump(self):
+        if not self.is_jumping:
+            self.vel_y = self.jump_speed
+            self.is_jumping = True
+
+    def update(self, gravity):
+        self.rect.y += self.vel_y
+        self.vel_y += gravity
+
+        # Ground collision
+        if self.rect.y >= HEIGHT - self.rect.height - 30:
+            self.rect.y = HEIGHT - self.rect.height - 30
+            self.is_jumping = False
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, BLACK, self.rect)
+
+class Obstacle:
+    def __init__(self, x, y, width, height, speed):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.speed = speed
+
+    def update(self):
+        self.rect.x -= self.speed
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, GREEN, self.rect)
+
+class Game:
+    def __init__(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        pygame.display.set_caption("Chrome Dino Clone")
+        
+        self.clock = pygame.time.Clock()
+        self.fps = 60
+        
+        self.reset_game()
+
+    def reset_game(self):
+        self.dino = Dino(50, HEIGHT - 90, 40, 60)
+        self.obstacles = []
+        self.score = 0
+        self.game_over = False
+        self.obstacle_timer = 0
+        self.start_time = pygame.time.get_ticks()
+        self.fps = 60
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    if self.game_over:
+                        self.reset_game()
+                    else:
+                        self.dino.jump()
+
+        return True
+
+    def update(self):
+        if not self.game_over:
+            self.dino.update(GRAVITY)
+            
+            # Spawn obstacles
+            self.obstacle_timer += 1
+            if self.obstacle_timer > random.randint(60, 180):
+                self.obstacle_timer = 0
+                new_obstacle = Obstacle(WIDTH, HEIGHT - 70, 20, 40, 7)
+                self.obstacles.append(new_obstacle)
+
+            # Update obstacles
+            for obstacle in self.obstacles[:]:
+                obstacle.update()
+
+                # Collision check
+                if self.dino.rect.colliderect(obstacle.rect):
+                    self.game_over = True
+
+                # Remove off-screen obstacles and update score
+                if obstacle.rect.right < 0:
+                    self.obstacles.remove(obstacle)
+                    self.score += 1
+                    self.fps += 2
+
+    def draw(self):
+        self.screen.fill(WHITE)
+        
+        # Draw game elements
+        self.dino.draw(self.screen)
+        for obstacle in self.obstacles:
+            obstacle.draw(self.screen)
+
+        # Draw score and time
+        font = pygame.font.SysFont(None, 36)
+        score_text = font.render(f"Score: {self.score}", True, BLACK)
+        self.screen.blit(score_text, (10, 10))
+
+        elapsed_time = (pygame.time.get_ticks() - self.start_time) // 1000
+        time_text = font.render(f"Time: {elapsed_time}s", True, BLACK)
+        self.screen.blit(time_text, (10, 40))
+
+        if self.game_over:
+            over_text = font.render("Game Over! Press Space bar to restart", True, (255, 0, 0))
+            self.screen.blit(over_text, (WIDTH // 2 - 160, HEIGHT // 2))
+
+        pygame.display.flip()
+
+    async def game_loop(self):
+        while True:
+            if not self.handle_events():
+                break
+
+            self.update()
+            self.draw()
+            self.clock.tick(self.fps)
+            
+            # Required for Pygbag
+            await asyncio.sleep(0)
+
+# Game constants
 WIDTH, HEIGHT = 800, 300
-SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Chrome Dino Clone")
-
-# Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (34, 177, 76)
+GRAVITY = 1
 
-# Game clock
-clock = pygame.time.Clock()
-FPS = 60
+async def main():
+    game = Game()
+    await game.game_loop()
+    pygame.quit()
 
-# Dino settings
-dino_width, dino_height = 40, 60
-dino_x, dino_y = 50, HEIGHT - dino_height - 30
-jump_speed = -15
-gravity = 1
-
-# Obstacle settings
-obstacle_width = 20
-obstacle_height = 40
-obstacle_speed = 7
-obstacle_timer = 0
-
-# Score
-score = 0
-font = pygame.font.SysFont(None, 36)
-
-# Game variables
-dino_vel_y = 0
-is_jumping = False
-obstacles = []
-
-# Game loop
-game_over = False
-running = True
-start_time = pygame.time.get_ticks()
-while running:
-    clock.tick(FPS)
-    SCREEN.fill(WHITE)
-
-    # Draw dino
-    dino_rect = pygame.Rect(dino_x, dino_y, dino_width, dino_height)
-    pygame.draw.rect(SCREEN, BLACK, dino_rect)
-
-    # Event handling
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and not is_jumping and not game_over:
-                is_jumping = True
-                dino_vel_y = jump_speed
-
-            if event.key == pygame.K_SPACE and game_over:
-                # Reset game state
-                dino_y = HEIGHT - dino_height - 30
-                dino_vel_y = 0
-                is_jumping = False
-                obstacles.clear()
-                score = 0
-                obstacle_timer = 0
-                start_time = pygame.time.get_ticks()
-                game_over = False
-                FPS = 60
-
-    # Handle jumping
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_SPACE] and not is_jumping:
-        dino_vel_y = jump_speed
-        is_jumping = True
-
-    dino_y += dino_vel_y
-    dino_vel_y += gravity
-
-    if dino_y >= HEIGHT - dino_height - 30:
-        dino_y = HEIGHT - dino_height - 30
-        is_jumping = False
-
-
-
-    # Spawn obstacles
-    obstacle_timer += 1
-    if obstacle_timer > random.randint(60, 180):
-        obstacle_timer = 0
-        new_obstacle = pygame.Rect(WIDTH, HEIGHT - obstacle_height - 30, obstacle_width, obstacle_height)
-        obstacles.append(new_obstacle)
-    if  not game_over:
-        # Move and draw obstacles
-        for obstacle in obstacles[:]:
-            obstacle.x -= obstacle_speed
-            pygame.draw.rect(SCREEN, GREEN, obstacle)
-
-            # Collision check
-            if dino_rect.colliderect(obstacle):
-                game_over = True
-
-            # Remove off-screen obstacles
-            if obstacle.x + obstacle_width < 0:
-                obstacles.remove(obstacle)
-                score += 1
-                FPS += 2
-
-
-        # Draw score
-        score_text = font.render(f"Score: {score}", True, BLACK)
-        SCREEN.blit(score_text, (10, 10))
-
-        elapsed_time = (pygame.time.get_ticks() - start_time) // 1000  # in seconds
-        time_text = font.render(f"Time: {elapsed_time}s", True, BLACK)
-        SCREEN.blit(time_text, (10, 40))
-
-    if game_over:
-        over_text = font.render("Game Over! Press Space bar to restart", True, (255, 0, 0))
-        SCREEN.blit(over_text, (WIDTH // 2 - 160, HEIGHT // 2))
-
-    pygame.display.flip()
-
-pygame.quit()
+if __name__ == '__main__':
+    asyncio.run(main())
